@@ -7,7 +7,7 @@ require (
 	github.com/flynn/noise v1.1.0
 	golang.org/x/sys v0.43.0
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2
-	gvisor.dev/gvisor v0.0.0-20260909091436-1c97a35e7956
+	gvisor.dev/gvisor v0.0.0-20260603234541-419be09f20ea
 )
 
 require (

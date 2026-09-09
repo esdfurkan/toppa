@@ -4,9 +4,9 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
-import java.security.NamedParameterSpec
 import java.security.SecureRandom
 import java.security.interfaces.XECPrivateKey
+import java.security.spec.NamedParameterSpec
 import java.security.spec.XECPrivateKeySpec
 import java.security.spec.XECPublicKeySpec
 import javax.crypto.Cipher
