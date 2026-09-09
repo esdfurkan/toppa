@@ -6,10 +6,10 @@
 // tunnel's transport ceiling by construction.
 //
 // NOTE ON VERSIONS: gVisor's link-endpoint and forwarder APIs migrate
-// frequently. This file targets the 2024-era API (stack.NewNIC,
-// PacketBuffer-based WritePackets, tcp/udp.NewForwarder, adapters/gonet).
-// The first compile pass pins the exact gvisor version via `go mod tidy`
-// and adjusts renamed symbols — no logic here should need to change.
+// frequently. This file targets the gvisor.dev/gvisor "go" branch API
+// (pinned via a replace to the esdfurkan/gvisor fork: bridge_test package
+// fix + tmpl template cleanup — see the fork's toppa-fix branch). Adjust
+// renamed symbols at compile time; no logic here should need to change.
 package netstack
 
 import (
@@ -30,6 +30,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
+	"gvisor.dev/gvisor/pkg/waiter"
 )
 
 const (
@@ -68,10 +69,8 @@ func Start(tun adapter.TunDevice, dialer relay.Dialer, dns *resolver.LocalDNS, t
 	}
 
 	proto := ipv4.ProtocolNumber
-	prefixLen := 32
 	if tunnelIP.To4() == nil {
 		proto = ipv6.ProtocolNumber
-		prefixLen = 128
 	}
 	if err := s.AddProtocolAddress(nicID, tcpip.ProtocolAddress{
 		Protocol:          proto,
@@ -97,7 +96,7 @@ func Start(tun adapter.TunDevice, dialer relay.Dialer, dns *resolver.LocalDNS, t
 		stopRead: make(chan struct{}),
 	}
 
-	tcpForwarder := tcp.NewForwarder(s, 0, true, eng.handleTCP)
+	tcpForwarder := tcp.NewForwarder(s, 0, 10, eng.handleTCP)
 	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
 
 	udpForwarder := udp.NewForwarder(s, eng.handleUDP)
@@ -141,7 +140,7 @@ func (eng *Engine) handleTCP(req *tcp.ForwarderRequest) {
 	}()
 }
 
-func (eng *Engine) handleUDP(req *udp.ForwarderRequest) {
+func (eng *Engine) handleUDP(req *udp.ForwarderRequest) (handled bool) {
 	var wq waiter.Queue
 	ep, err := req.CreateEndpoint(&wq)
 	if err != nil {
@@ -166,6 +165,7 @@ func (eng *Engine) handleUDP(req *udp.ForwarderRequest) {
 		}
 		_, _ = conn.WriteTo(resp, nil)
 	}()
+	return true
 }
 
 func (eng *Engine) readLoop(link *tunLink) {

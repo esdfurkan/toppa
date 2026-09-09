@@ -80,9 +80,17 @@ func TestFrameRejectsBadFrames(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded, err := AppendFrame(nil, tc.f, 1<<20)
-			if err != nil {
-				t.Fatalf("AppendFrame: %v", err)
+			var encoded []byte
+			if tc.f.Version != ProtocolVersion {
+				// AppendFrame validates the version, so unsupported-version
+				// frames are hand-encoded: [v=2][flags][id=1][len=0].
+				encoded = []byte{2, tc.f.Flags, 0, 0, 0, 1, 0, 0, 0, 0}
+			} else {
+				var err error
+				encoded, err = AppendFrame(nil, tc.f, 1<<20)
+				if err != nil {
+					t.Fatalf("AppendFrame: %v", err)
+				}
 			}
 			if _, err := ReadFrame(bytes.NewReader(encoded), 50); err == nil {
 				t.Fatal("ReadFrame accepted a malformed frame")

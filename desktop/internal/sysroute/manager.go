@@ -124,10 +124,16 @@ type Desired struct {
 type Manager struct {
 	configurer NetConfigurer
 	journal    *failsafe.Journal
+	runFn      func(cmd string, args ...string) error
 }
 
 func NewManager(configurer NetConfigurer, journal *failsafe.Journal) *Manager {
-	return &Manager{configurer: configurer, journal: journal}
+	return &Manager{configurer: configurer, journal: journal, runFn: run}
+}
+
+// SetRunner overrides the command executor (tests inject a recorder).
+func (m *Manager) SetRunner(fn func(cmd string, args ...string) error) {
+	m.runFn = fn
 }
 
 // Reconcile rolls back leftovers from a previous crashed run. Call before
@@ -139,7 +145,7 @@ func (m *Manager) Reconcile() (int, error) {
 			if len(fields) == 0 {
 				continue
 			}
-			if err := run(fields[0], fields[1:]...); err != nil {
+			if err := m.runFn(fields[0], fields[1:]...); err != nil {
 				return err
 			}
 		}
@@ -218,7 +224,7 @@ func (m *Manager) Rollback() (int, error) {
 			if len(fields) == 0 {
 				continue
 			}
-			if err := run(fields[0], fields[1:]...); err != nil {
+			if err := m.runFn(fields[0], fields[1:]...); err != nil {
 				return err
 			}
 		}

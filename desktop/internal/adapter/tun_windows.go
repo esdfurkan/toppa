@@ -15,7 +15,7 @@ type Wintun struct {
 	name    string
 	mtu     int
 	adapter *wintun.Adapter
-	session *wintun.Session
+	session wintun.Session
 	logf    func(format string, args ...any)
 }
 
@@ -42,8 +42,9 @@ func NewWintun(cfg Config) (*Wintun, error) {
 
 	adapter, err := wintun.CreateAdapter(cfg.Name, "Toppa", nil)
 	if err != nil {
-		// Left over from a crashed run: reopen instead of failing (the
-		// failsafe journal deletes leftover adapters on reconcile).
+		// Left over from a crashed run: reopen instead of failing (reopen
+		// keeps the adapter usable; the failsafe journal reconciles the
+		// rest).
 		adapter, err = wintun.OpenAdapter(cfg.Name)
 		if err != nil {
 			return nil, fmt.Errorf("adapter: create/open %q: %w", cfg.Name, err)
@@ -86,16 +87,13 @@ func (w *Wintun) Read(packet []byte) (int, error) {
 }
 
 func (w *Wintun) Write(packet []byte) (int, error) {
-	if err := w.session.SendPacket(packet); err != nil {
-		return 0, fmt.Errorf("adapter: send: %w", err)
-	}
+	w.session.SendPacket(packet)
 	return len(packet), nil
 }
 
-// Close ends the session and releases the adapter handle. The adapter itself
-// is intentionally NOT deleted here: route/DNS state may still reference it,
-// and teardown order belongs to the failsafe journal (delete happens on
-// reconcile of a clean shutdown).
+// Close ends the session and releases the adapter handle. The driver adapter
+// itself is intentionally NOT deleted here: the Go bindings do not expose
+// removal, and reopen-on-create (NewWintun) makes leftovers harmless.
 func (w *Wintun) Close() error {
 	w.session.End()
 	if err := w.adapter.Close(); err != nil {
@@ -104,15 +102,9 @@ func (w *Wintun) Close() error {
 	return nil
 }
 
-// DeleteAdapter removes the driver adapter entirely (clean-shutdown path).
+// DeleteAdapter has no effect: the Go Wintun bindings do not expose driver
+// adapter removal. Kept for daemon-call-site symmetry with the design docs;
+// leftover adapters are reused via OpenAdapter.
 func DeleteAdapter(name string) error {
-	adapter, err := wintun.OpenAdapter(name)
-	if err != nil {
-		return nil // nothing to delete
-	}
-	var reboot bool
-	if err := adapter.DeleteAdapter(&reboot); err != nil {
-		return fmt.Errorf("adapter: delete %q: %w", name, err)
-	}
 	return nil
 }

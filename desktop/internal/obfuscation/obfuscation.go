@@ -73,7 +73,7 @@ func (p *PaddingInjector) Start() {
 			case <-p.stop:
 				return
 			case <-ticker.C:
-				if _, err := p.session.PingPayload(randomPadding(p.settings.PaddingMaxBytes)); err != nil {
+				if err := p.session.PingPayload(randomPadding(p.settings.PaddingMaxBytes)); err != nil {
 					return
 				}
 			}

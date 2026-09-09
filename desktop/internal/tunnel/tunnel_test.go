@@ -96,16 +96,17 @@ func TestRecordRoundTrip(t *testing.T) {
 	}
 }
 
-// tamperConn flips a bit in the Nth write passing through it. Handshake
-// writes are counted too: the initiator emits exactly two handshake writes
-// (msg1, msg3) before the record layer starts (header, ciphertext, header,
-// ciphertext, …), so index 4 is the first record's ciphertext.
+// tamperConn flips a bit in the Nth write passing through it. Writes are
+// counted per conn.Write call: each handshake message is sent as its own
+// (header, message) pair — writes 1-4 are the handshake — then the record
+// layer emits (header, ciphertext) per record, so index 6 is the first
+// record's ciphertext.
 type tamperConn struct {
 	net.Conn
 	writes int
 }
 
-const tamperWriteIndex = 4
+const tamperWriteIndex = 6
 
 func (t *tamperConn) Write(b []byte) (int, error) {
 	t.writes++
@@ -146,11 +147,18 @@ func TestRecordAuthRejectsTampering(t *testing.T) {
 	if err := out.r.Conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatalf("set deadline: %v", err)
 	}
+	// Start the responder read BEFORE writing: net.Pipe writes block until
+	// consumed, so writing first would deadlock the test.
+	readErr := make(chan error, 1)
+	go func() {
+		buf := make([]byte, 64)
+		_, err := out.r.Conn.Read(buf)
+		readErr <- err
+	}()
 	if _, err := iniRes.Conn.Write([]byte("attack at dawn")); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	buf := make([]byte, 64)
-	if _, err := out.r.Conn.Read(buf); err == nil {
+	if err := <-readErr; err == nil {
 		t.Fatal("tampered record was accepted")
 	}
 }

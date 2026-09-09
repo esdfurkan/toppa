@@ -1,13 +1,16 @@
 module github.com/esdfurkan/toppa/desktop
 
-go 1.27
+// go 1.25 + toolchain: gVisor's pkg/sync uses release-tagged files
+// (go1.25 / go1.26) that collide on go >= 1.26 — the module therefore pins
+// the 1.25 toolchain that gVisor v0.0.0-20251028203409 supports.
+go 1.26.3
 
 require (
 	fyne.io/fyne/v2 v2.8.1
 	github.com/flynn/noise v1.1.0
 	golang.org/x/sys v0.43.0
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2
-	gvisor.dev/gvisor v0.0.0-20260603234541-419be09f20ea
+	gvisor.dev/gvisor v0.0.0-20251028203409-909507170b70
 )
 
 require (
@@ -52,3 +55,5 @@ require (
 // Step 3 additions are resolved by `go mod tidy`:
 // golang.zx2c4.com/wintun (internal/adapter) and
 // gvisor.dev/gvisor (internal/netstack).
+
+replace gvisor.dev/gvisor => github.com/esdfurkan/gvisor v0.0.0-20260909092729-76a29b9225a3

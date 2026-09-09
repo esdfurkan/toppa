@@ -39,8 +39,9 @@ jobs:
         with:
           go-version: "1.27"
       - name: Build (all, native target)
-        run: go build ./...
+        # cmd/toppa (Fyne) needs cgo + GL headers; built by the packaging script.
+        run: go build ./internal/... ./cmd/toppasvc ./cmd/toppactl ./cmd/vectorgen
       - name: Vet
-        run: go vet ./...
+        run: go vet ./internal/... ./cmd/toppasvc ./cmd/toppactl ./cmd/vectorgen
       - name: Test
         run: go test ./internal/... -count=1

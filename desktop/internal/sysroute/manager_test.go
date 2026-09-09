@@ -18,7 +18,7 @@ type fakeConfigurer struct {
 }
 
 func (f *fakeConfigurer) SetInterfaceIP(iface string, ip net.IP, prefixLen int) ([]string, error) {
-	if strings.Contains(iface, f.failOn) {
+	if f.failOn != "" && strings.Contains(iface, f.failOn) {
 		return nil, errFake
 	}
 	f.ips = append(f.ips, ip.String())
@@ -26,7 +26,7 @@ func (f *fakeConfigurer) SetInterfaceIP(iface string, ip net.IP, prefixLen int) 
 }
 
 func (f *fakeConfigurer) AddRoute(dst *net.IPNet, iface string, metric int) ([]string, []string, error) {
-	if f.failOn == "route" {
+	if f.failOn != "" && strings.Contains("route", f.failOn) {
 		return nil, nil, errFake
 	}
 	f.routes = append(f.routes, dst.String())
@@ -34,7 +34,7 @@ func (f *fakeConfigurer) AddRoute(dst *net.IPNet, iface string, metric int) ([]s
 }
 
 func (f *fakeConfigurer) SetDNS(iface string, servers []net.IP) ([]string, []string, error) {
-	if strings.Contains(iface, f.failOn) {
+	if f.failOn != "" && strings.Contains(iface, f.failOn) {
 		return nil, nil, errFake
 	}
 	var ips []string
@@ -61,7 +61,10 @@ func newTestManager(t *testing.T, cfg *fakeConfigurer) *Manager {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewManager(cfg, j)
+	m := NewManager(cfg, j)
+	// Undo commands are netsh/route strings; tests must not execute them.
+	m.SetRunner(func(cmd string, args ...string) error { return nil })
+	return m
 }
 
 func filepath(t *testing.T) string {

@@ -1,16 +1,9 @@
 package dev.toppa.proto.crypto
 
 import java.math.BigInteger
-import java.security.KeyFactory
-import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.security.interfaces.XECPrivateKey
-import java.security.spec.NamedParameterSpec
-import java.security.spec.XECPrivateKeySpec
-import java.security.spec.XECPublicKeySpec
 import javax.crypto.Cipher
-import javax.crypto.KeyAgreement
 import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -45,12 +38,11 @@ object Hkdf {
 }
 
 /**
- * ChaCha20-Poly1305 AEAD through the JCA provider (JVM 11+). `encrypt`
- * returns ciphertext || 16-byte tag; `decrypt` throws on forgery.
- *
- * Android note: modern Android (API 28+) ships an equivalent provider; if a
- * target device does not, plug a BouncyCastle-backed implementation behind
- * this object — nothing else in the module may touch JCA directly.
+ * ChaCha20-Poly1305 AEAD through the JCA provider. `encrypt` returns
+ * ciphertext || 16-byte tag; `decrypt` throws on forgery. The JCA
+ * ChaCha20-Poly1305 transform is available on JVM 11+ and Android API 28+;
+ * for older Android targets plug a provider-backed implementation behind
+ * this object — nothing else in the module touches JCA directly.
  */
 object ChaChaPoly {
     private const val TRANSFORM = "ChaCha20-Poly1305/None/NoPadding"
@@ -84,24 +76,27 @@ object ChaChaPoly {
 }
 
 /**
- * Raw X25519 (RFC 7748) over the JCA XDH provider. Keys use the Noise
- * DH25519 wire encoding: raw 32-byte little-endian byte strings.
+ * Raw X25519 (RFC 7748) implemented with BigInteger field arithmetic — no
+ * platform crypto provider involved, so JVM CI and Android behave
+ * identically, and correctness is pinned by the RFC 7748 §6.1 vectors in
+ * X25519Test.
+ *
+ * Known limitation (documented, acceptable for v1): BigInteger arithmetic is
+ * not constant-time. The static key signs no payloads — it only authenticates
+ * the handshake — and session keys are per-connection; a constant-time
+ * implementation (e.g. Tink) is the upgrade path if timing attacks on the
+ * handshake ever land in the threat model.
  */
 object X25519 {
+    private val P = BigInteger.TWO.pow(255).subtract(BigInteger.valueOf(19))
+    private val A24 = BigInteger.valueOf(121665)
     private val BASE_POINT = ByteArray(32).also { it[0] = 9 } // u = 9
 
+    /** 32 random bytes; clamped at use time per RFC 7748. */
     fun generatePrivateKey(random: SecureRandom = SecureRandom()): ByteArray {
-        val generator = KeyPairGenerator.getInstance("XDH")
-        generator.initialize(NamedParameterSpec.X25519, random)
-        val keyPair = generator.generateKeyPair()
-        val privateKey = keyPair.private as XECPrivateKey
-        val scalarOptional = privateKey.scalar
-        val scalar: BigInteger = if (scalarOptional.isPresent) {
-            scalarOptional.get()
-        } else {
-            throw IllegalStateException("x25519: provider returned a key without a scalar")
-        }
-        return bigIntegerTo32LE(scalar)
+        val key = ByteArray(32)
+        random.nextBytes(key)
+        return clamp(key)
     }
 
     /** Public key of a raw private key: X25519(priv, base point). */
@@ -109,38 +104,77 @@ object X25519 {
 
     /** Raw Diffie-Hellman: the 32-byte shared x-coordinate. */
     fun dh(privRaw: ByteArray, peerPubRaw: ByteArray): ByteArray {
-        val agreement = KeyAgreement.getInstance("XDH")
-        agreement.init(privateKey(privRaw))
-        agreement.doPhase(publicKey(peerPubRaw), true)
-        return agreement.generateSecret()
+        require(privRaw.size == 32 && peerPubRaw.size == 32) { "x25519: keys must be 32 bytes" }
+        val scalar = decodeScalar(privRaw)
+        val x1 = decodeU(peerPubRaw)
+
+        // Montgomery ladder (RFC 7748 §5, 255-bit scalars after clamping).
+        var x2 = BigInteger.ONE
+        var z2 = BigInteger.ZERO
+        var x3 = x1
+        var z3 = BigInteger.ONE
+        var swap = false
+        for (t in 254 downTo 0) {
+            val kt = scalar.testBit(t)
+            if (swap != kt) {
+                var tmp = x2; x2 = x3; x3 = tmp
+                tmp = z2; z2 = z3; z3 = tmp
+            }
+            swap = kt
+            val a = x2.add(z2).mod(P)
+            val aa = a.multiply(a).mod(P)
+            val b = x2.subtract(z2).mod(P)
+            val bb = b.multiply(b).mod(P)
+            val e = aa.subtract(bb).mod(P)
+            val c = x3.add(z3).mod(P)
+            val d = x3.subtract(z3).mod(P)
+            val da = d.multiply(a).mod(P)
+            val cb = c.multiply(b).mod(P)
+            val daPlusCb = da.add(cb)
+            val daMinusCb = da.subtract(cb)
+            x3 = daPlusCb.multiply(daPlusCb).mod(P)
+            z3 = x1.multiply(daMinusCb).multiply(daMinusCb).mod(P)
+            x2 = aa.multiply(bb).mod(P)
+            z2 = e.multiply(aa.add(A24.multiply(e)).mod(P)).mod(P)
+        }
+        if (swap) {
+            var tmp = x2; x2 = x3; x3 = tmp
+            tmp = z2; z2 = z3; z3 = tmp
+        }
+        val result = x2.multiply(z2.modPow(P.subtract(BigInteger.TWO), P)).mod(P)
+        return to32LE(result)
     }
 
-    private fun privateKey(raw: ByteArray): java.security.PrivateKey {
-        val u = rawToBigInteger(raw)
-        return KeyFactory.getInstance("XDH").generatePrivate(
-            XECPrivateKeySpec(NamedParameterSpec.X25519, u)
-        )
+    private fun decodeScalar(raw: ByteArray): BigInteger {
+        val k = raw.copyOf().also {
+            it[0] = (it[0].toInt() and 248).toByte()
+            it[31] = ((it[31].toInt() and 127) or 64).toByte()
+        }
+        return BigInteger(1, k.reversedArray())
     }
 
-    private fun publicKey(raw: ByteArray): java.security.PublicKey {
-        val u = rawToBigInteger(raw)
-        return KeyFactory.getInstance("XDH").generatePublic(
-            XECPublicKeySpec(NamedParameterSpec.X25519, u)
-        )
+    private fun decodeU(raw: ByteArray): BigInteger {
+        val u = raw.copyOf()
+        u[31] = (u[31].toInt() and 127).toByte() // mask the high bit per RFC 7748
+        return BigInteger(1, u.reversedArray())
     }
 
-    private fun rawToBigInteger(raw: ByteArray): BigInteger {
-        require(raw.size == 32) { "x25519: raw key must be 32 bytes, got ${raw.size}" }
-        return BigInteger(1, raw.reversedArray()) // little-endian raw -> big-endian integer
-    }
-
-    private fun bigIntegerTo32LE(value: BigInteger): ByteArray {
-        val bigEndian = value.toByteArray() // may carry a leading zero sign byte
-        val stripped = if (bigEndian.size > 32) bigEndian.copyOfRange(bigEndian.size - 32, bigEndian.size) else bigEndian
+    private fun to32LE(value: BigInteger): ByteArray {
+        val be = value.mod(P).toByteArray()
         val out = ByteArray(32)
-        for (i in stripped.indices) {
-            out[stripped.size - 1 - i] = stripped[i]
+        var i = be.size - 1
+        var j = 0
+        while (i >= 0 && j < 32) {
+            out[j] = be[i]
+            i--
+            j++
         }
         return out
+    }
+
+    private fun clamp(key: ByteArray): ByteArray {
+        key[0] = (key[0].toInt() and 248).toByte()
+        key[31] = ((key[31].toInt() and 127) or 64).toByte()
+        return key
     }
 }
