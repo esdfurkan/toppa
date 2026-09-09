@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
-class MuxConfig(
+data class MuxConfig(
     val maxFramePayload: Int = 64 * 1024,
     val initialWindow: Int = 256 * 1024,
     val keepAliveMillis: Long = 0,
