@@ -18,6 +18,8 @@ java {
 // files are shared verbatim with the Go implementation.
 dependencies {
     testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.3")
     // JSON parsing for protocol/vectors/*.json (test scope only).
     testImplementation("com.google.code.gson:gson:2.11.0")
 }
