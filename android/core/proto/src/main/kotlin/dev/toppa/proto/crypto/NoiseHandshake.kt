@@ -79,8 +79,9 @@ class NoiseHandshake(role: Role, staticPrivateRaw: ByteArray) {
             val re = requireField(remoteEphemeral, "remote ephemeral")
             mixKey(X25519.dh(requireField(ephemeralPriv, "ephemeral"), re)) // ee
             out.write(encryptAndHash(staticPub))                            // s
-            val rs = requireField(remoteStatic, "remote static")
-            mixKey(X25519.dh(requireField(ephemeralPriv, "ephemeral"), rs)) // es
+            // es: DH(responder static, initiator ephemeral) — per the Noise
+            // rule, es is always DH(initiator ephemeral, responder static).
+            mixKey(X25519.dh(staticPriv, re))
             out.write(encryptAndHash(payload))
         }
         step++

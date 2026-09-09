@@ -30,9 +30,9 @@ jobs:
         working-directory: desktop
         run: go test ./internal/mux ./internal/tunnel -run "GoldenVectors" -count=1
 
-      - name: Kotlin vector tests (frames, targets, SAS)
+      - name: Kotlin vector tests (frames, targets, SAS, X25519)
         working-directory: android
-        run: gradle :core:proto:test --tests "*Vectors*" --tests "*SasTest*" --no-daemon
+        run: gradle :core:proto:test --tests "*Vectors*" --tests "*SasTest*" --tests "*X25519Test*" --no-daemon
 
       - name: Build Go responder
         working-directory: desktop
