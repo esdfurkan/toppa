@@ -8,8 +8,8 @@ import kotlin.test.assertTrue
 
 /**
  * Kotlin↔Kotlin Noise round trip: isolates implementation bugs from
- * cross-language interop issues. Both roles run with hard deadlines so a
- * protocol stall fails instead of hanging CI.
+ * cross-language interop issues. Both roles run on daemon threads with hard
+ * deadlines so a protocol stall fails fast instead of hanging CI.
  */
 class NoiseRoundTripTest {
 
@@ -26,7 +26,7 @@ class NoiseRoundTripTest {
         val initiatorResult = arrayOfNulls<TunnelHandshake.Result>(1)
         val errors = mutableListOf<Exception>()
 
-        val responder = Thread {
+        val responder = Thread(null, {
             try {
                 responderResult[0] = TunnelHandshake.handshake(
                     inB, outB, Role.RESPONDER, X25519.generatePrivateKey(),
@@ -34,8 +34,10 @@ class NoiseRoundTripTest {
             } catch (e: Exception) {
                 errors.add(e)
             }
-        }
-        val initiator = Thread {
+        }, "toppa-test-responder")
+        responder.isDaemon = true
+
+        val initiator = Thread(null, {
             try {
                 initiatorResult[0] = TunnelHandshake.handshake(
                     inA, outA, Role.INITIATOR, X25519.generatePrivateKey(),
@@ -43,7 +45,9 @@ class NoiseRoundTripTest {
             } catch (e: Exception) {
                 errors.add(e)
             }
-        }
+        }, "toppa-test-initiator")
+        initiator.isDaemon = true
+
         responder.start()
         initiator.start()
         responder.join(15_000)

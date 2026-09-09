@@ -23,6 +23,7 @@ import kotlin.test.fail
 class InteropTest {
 
     @Test
+    @Timeout(60)
     fun `noise xx handshake and tlmp echo against go responder`() {
         val addr = System.getenv("TOPPA_INTEROP_ADDR")
         assumeTrue(addr != null, "TOPPA_INTEROP_ADDR not set; interop runs in the protocol-interop CI job")

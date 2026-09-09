@@ -26,4 +26,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // Per-test outcomes in CI logs: pinpoint hangs and failures at a glance.
+    testLogging {
+        events("passed", "failed", "skipped")
+        showExceptions = true
+        showStackTraces = true
+    }
 }
