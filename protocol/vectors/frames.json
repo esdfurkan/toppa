@@ -1,0 +1,166 @@
+{
+  "protocol": "TLMP",
+  "version": 1,
+  "$comment": "Golden vectors for the TLMP frame codec (protocol/SPEC.md section 4). Consumed by desktop/internal/mux/vectors_test.go and android :core:proto TlmpVectorsTest.kt. 'flags' are decimal; hex strings are lowercase. Rejection cases carry the reason the implementation must reject them with.",
+  "cases": [
+    {
+      "name": "data_simple",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 16,
+      "streamId": 1,
+      "payloadHex": "68656c6c6f20746c6d70",
+      "encodedHex": "0110000000010000000a68656c6c6f20746c6d70"
+    },
+    {
+      "name": "syn_fqdn",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 1,
+      "streamId": 3,
+      "payloadHex": "01030b6578616d706c652e636f6d01bb",
+      "encodedHex": "0101000000030000001001030b6578616d706c652e636f6d01bb"
+    },
+    {
+      "name": "syn_ipv4",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 1,
+      "streamId": 5,
+      "payloadHex": "0101c0a801011f90",
+      "encodedHex": "010100000005000000080101c0a801011f90"
+    },
+    {
+      "name": "syn_ipv6",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 1,
+      "streamId": 7,
+      "payloadHex": "0104fd0000000000000000000000000000010035",
+      "encodedHex": "010100000007000000140104fd0000000000000000000000000000010035"
+    },
+    {
+      "name": "win_update",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 8,
+      "streamId": 9,
+      "payloadHex": "00010000",
+      "encodedHex": "0108000000090000000400010000"
+    },
+    {
+      "name": "fin",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 2,
+      "streamId": 11,
+      "payloadHex": "",
+      "encodedHex": "01020000000b00000000"
+    },
+    {
+      "name": "rst",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 4,
+      "streamId": 13,
+      "payloadHex": "02",
+      "encodedHex": "01040000000d0000000102"
+    },
+    {
+      "name": "ping",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 32,
+      "streamId": 0,
+      "payloadHex": "0102030405060708",
+      "encodedHex": "012000000000000000080102030405060708"
+    },
+    {
+      "name": "pong",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 64,
+      "streamId": 0,
+      "payloadHex": "0102030405060708",
+      "encodedHex": "014000000000000000080102030405060708"
+    },
+    {
+      "name": "goaway",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 128,
+      "streamId": 0,
+      "payloadHex": "00",
+      "encodedHex": "0180000000000000000100"
+    },
+    {
+      "name": "data_high_stream_id",
+      "kind": "valid",
+      "maxPayload": 65536,
+      "version": 1,
+      "flags": 16,
+      "streamId": 65535,
+      "payloadHex": "aa",
+      "encodedHex": "01100000ffff00000001aa"
+    },
+    {
+      "name": "reject_unsupported_version",
+      "kind": "error",
+      "reason": "unsupported_version",
+      "maxPayload": 65536,
+      "encodedHex": "02100000000100000000"
+    },
+    {
+      "name": "reject_frame_too_large",
+      "kind": "error",
+      "reason": "frame_too_large",
+      "maxPayload": 4,
+      "encodedHex": "01100000000100000005aabbccddee"
+    },
+    {
+      "name": "reject_ping_with_stream_id",
+      "kind": "error",
+      "reason": "control_stream_id",
+      "maxPayload": 65536,
+      "encodedHex": "012000000004000000080000000000000000"
+    },
+    {
+      "name": "reject_win_short_payload",
+      "kind": "error",
+      "reason": "win_payload_size",
+      "maxPayload": 65536,
+      "encodedHex": "010800000001000000020001"
+    },
+    {
+      "name": "reject_rst_short_payload",
+      "kind": "error",
+      "reason": "rst_payload_size",
+      "maxPayload": 65536,
+      "encodedHex": "010400000001000000020001"
+    },
+    {
+      "name": "reject_goaway_with_stream_id",
+      "kind": "error",
+      "reason": "control_stream_id",
+      "maxPayload": 65536,
+      "encodedHex": "0180000000070000000100"
+    },
+    {
+      "name": "reject_syn_combined_with_data",
+      "kind": "error",
+      "reason": "syn_with_data",
+      "maxPayload": 65536,
+      "encodedHex": "01110000000100000000"
+    }
+  ]
+}

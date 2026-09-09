@@ -1,0 +1,60 @@
+{
+  "$comment": "Mirror of config.Default() in desktop/internal/config. Keep in sync with protocol/schemas/config.schema.json. Never put secrets here.",
+  "keys_dir": "",
+  "tunnel": {
+    "mtu": 1380,
+    "max_frame_payload": 65536,
+    "initial_stream_window": 262144,
+    "keepalive_secs": 15,
+    "handshake_timeout_ms": 5000,
+    "listen_port": 47471
+  },
+  "transport": {
+    "priority": ["usb", "hotspot", "wfd"],
+    "adb": {
+      "binary": "adb",
+      "host_port": 47472
+    },
+    "hotspot_addr": ""
+  },
+  "relay": {
+    "max_streams": 256,
+    "buffer_kb": 256,
+    "expose_socks": false,
+    "socks_bind": "127.0.0.1:47473"
+  },
+  "dns": {
+    "mode": "pc_doh",
+    "doh_servers": [
+      "https://1.1.1.1/dns-query",
+      "https://8.8.8.8/dns-query"
+    ],
+    "bootstrap_ips": ["1.1.1.1", "8.8.8.8"]
+  },
+  "log": {
+    "level": "info",
+    "format": "text"
+  },
+  "netstack": {
+    "adapter_name": "Toppa",
+    "tunnel_ip": "10.111.0.1",
+    "route_metric": 5,
+    "rewrite_physical_dns": true
+  },
+  "obfuscation": {
+    "profile": "light",
+    "max_concurrent": 0,
+    "jitter_ms": 0,
+    "sanitize_http": true,
+    "user_agent": ""
+  },
+  "api": {
+    "enabled": true,
+    "listen": "127.0.0.1:47474"
+  },
+  "daemon": {
+    "journal_path": "",
+    "reconnect_initial_ms": 1000,
+    "reconnect_max_ms": 30000
+  }
+}

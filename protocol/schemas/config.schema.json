@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://toppa.dev/schemas/config.schema.json",
+  "title": "Toppa configuration",
+  "description": "Shared configuration surface for the Android and Windows clients. Both implementations reject unknown fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "keys_dir": {
+      "type": "string",
+      "description": "Override for the long-term key store directory. Empty = platform default (~/.toppa/desktop on Windows)."
+    },
+    "tunnel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mtu": { "type": "integer", "minimum": 576, "maximum": 65535 },
+        "max_frame_payload": { "type": "integer", "minimum": 1024, "maximum": 262144 },
+        "initial_stream_window": { "type": "integer", "minimum": 4096, "maximum": 16777216 },
+        "keepalive_secs": { "type": "integer", "minimum": 0, "maximum": 600 },
+        "handshake_timeout_ms": { "type": "integer", "minimum": 500, "maximum": 60000 },
+        "listen_port": { "type": "integer", "minimum": 1024, "maximum": 65535 }
+      },
+      "required": ["mtu", "max_frame_payload", "initial_stream_window", "keepalive_secs", "handshake_timeout_ms", "listen_port"]
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "priority": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["usb", "hotspot", "wfd"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "adb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "binary": { "type": "string" },
+            "host_port": { "type": "integer", "minimum": 1024, "maximum": 65535 }
+          },
+          "required": ["binary", "host_port"]
+        },
+        "hotspot_addr": { "type": "string", "description": "Phone host:port on the SoftAP network (discovered/paired, never hardcoded)." }
+      },
+      "required": ["priority", "adb"]
+    },
+    "relay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_streams": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "buffer_kb": { "type": "integer", "minimum": 4, "maximum": 8192 },
+        "expose_socks": { "type": "boolean" },
+        "socks_bind": { "type": "string" }
+      },
+      "required": ["max_streams", "buffer_kb", "expose_socks"]
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["pc_doh", "phone_doh", "phone_system"], "description": "v1 wires pc_doh end to end; phone_doh needs the phone-side DoH bridge (documented leftover)." },
+        "doh_servers": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "bootstrap_ips": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      },
+      "required": ["mode"]
+    },
+    "log": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "string", "enum": ["debug", "info", "warn", "error"] },
+        "format": { "type": "string", "enum": ["text", "json"] }
+      },
+      "required": ["level", "format"]
+    },
+    "netstack": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapter_name": { "type": "string", "minLength": 1 },
+        "tunnel_ip": { "type": "string" },
+        "route_metric": { "type": "integer", "minimum": 1, "maximum": 9999 },
+        "rewrite_physical_dns": { "type": "boolean" }
+      },
+      "required": ["adapter_name", "tunnel_ip", "route_metric", "rewrite_physical_dns"]
+    },
+    "obfuscation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "type": "string", "enum": ["none", "light", "paranoid"] },
+        "max_concurrent": { "type": "integer", "minimum": 0, "maximum": 1024, "description": "0 disables pacing." },
+        "jitter_ms": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "sanitize_http": { "type": "boolean" },
+        "user_agent": { "type": "string" }
+      },
+      "required": ["profile", "max_concurrent", "jitter_ms", "sanitize_http"]
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "listen": { "type": "string" }
+      },
+      "required": ["enabled", "listen"]
+    },
+    "daemon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "journal_path": { "type": "string", "description": "Empty = packaging default (ProgramData)." },
+        "reconnect_initial_ms": { "type": "integer", "minimum": 100, "maximum": 60000 },
+        "reconnect_max_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 },
+        "dns_mode_override": { "type": "string", "enum": ["pc_doh", "phone_doh", "phone_system"] }
+      },
+      "required": ["journal_path", "reconnect_initial_ms", "reconnect_max_ms"]
+    }
+  },
+  "required": ["tunnel", "transport", "relay", "dns", "log", "netstack", "obfuscation", "api", "daemon"]
+}

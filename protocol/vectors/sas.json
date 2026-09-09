@@ -1,0 +1,22 @@
+{
+  "protocol": "TLMP",
+  "version": 1,
+  "$comment": "Golden vectors for the Short Authentication String derivation (protocol/SPEC.md §2.4): sas = %06d(BE_uint32(SHA-256('toppa-sas-v1' || handshake_hash)[0:4]) mod 1_000_000). Consumed by desktop/internal/tunnel/sas_test.go and android :core:proto SasTest.kt.",
+  "cases": [
+    {
+      "name": "zero_hash",
+      "handshakeHashHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "sas": "317154"
+    },
+    {
+      "name": "counting_hash",
+      "handshakeHashHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "sas": "396064"
+    },
+    {
+      "name": "ff_hash",
+      "handshakeHashHex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "sas": "000170"
+    }
+  ]
+}

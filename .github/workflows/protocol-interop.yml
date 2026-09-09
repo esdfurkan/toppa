@@ -1,0 +1,65 @@
+name: protocol-interop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Live Go↔Kotlin interop: the Go CLI acts as Noise_XX responder + TLMP echo
+# server; the Kotlin :core:proto tests connect as initiator. Vector tests
+# (same JSON files on both sides) run first so codec drift fails fast.
+
+jobs:
+  go-vs-kotlin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Go vector tests (frames, targets, SAS)
+        working-directory: desktop
+        run: go test ./internal/mux ./internal/tunnel -run "GoldenVectors" -count=1
+
+      - name: Kotlin vector tests (frames, targets, SAS)
+        working-directory: android
+        run: gradle :core:proto:test --tests "*Vectors*" --tests "*SasTest*" --no-daemon
+
+      - name: Build Go responder
+        working-directory: desktop
+        run: go build -o /tmp/toppactl ./cmd/toppactl
+
+      - name: Start Go responder (Noise_XX responder + TLMP echo)
+        run: |
+          printf '{"keys_dir": "%s"}' "$RUNNER_TEMP/toppa-keys" > /tmp/toppa-config.json
+          /tmp/toppactl serve -config /tmp/toppa-config.json -listen 127.0.0.1:47471 > /tmp/toppactl.log 2>&1 &
+          echo $! > /tmp/toppactl.pid
+          for i in $(seq 1 40); do
+            if (exec 3<>/dev/tcp/127.0.0.1/47471) 2>/dev/null; then
+              echo "responder is up"
+              break
+            fi
+            sleep 0.5
+          done
+
+      - name: Kotlin live interop (Noise_XX initiator + TLMP echo)
+        working-directory: android
+        env:
+          TOPPA_INTEROP_ADDR: "127.0.0.1:47471"
+        run: gradle :core:proto:test --tests "*Interop*" --no-daemon
+
+      - name: SAS cross-check (both consoles must agree)
+        if: always()
+        run: |
+          echo "--- responder log ---"
+          cat /tmp/toppactl.log || true
+          if [ -f /tmp/toppactl.pid ]; then kill "$(cat /tmp/toppactl.pid)" || true; fi

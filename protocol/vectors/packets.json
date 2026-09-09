@@ -1,0 +1,69 @@
+{
+  "protocol": "TLMP",
+  "version": 1,
+  "$comment": "Golden packet fixtures for the Shield-mode packet engine (core:vpn PacketProcessor; architecture section 1.1 L1). Assertions are structural so both language implementations consume this file: for kind=rewrite, output must equal input except the TTL/HopLimit byte (which becomes 'after') and, for IPv4 only, the recomputed checksum bytes; the resulting checksum must validate. kind=nochange: byte-identical passthrough. kind=drop: processor rejects the packet. The 'before' checksums are intentionally NOT valid (the rewriter must produce a valid one).",
+  "cases": [
+    {
+      "name": "ipv4_tcp_syn",
+      "kind": "rewrite",
+      "ipVersion": 4,
+      "ttlOffset": 8,
+      "before": 63,
+      "after": 64,
+      "checksumOffset": 10,
+      "inputHex": "45000028123440003f060000c0a801645db8d822c00001bb11223344000000005002ffff00000000"
+    },
+    {
+      "name": "ipv4_udp_dns",
+      "kind": "rewrite",
+      "ipVersion": 4,
+      "ttlOffset": 8,
+      "before": 32,
+      "after": 64,
+      "checksumOffset": 10,
+      "inputHex": "4500001c0001000020110000c0a80164080808084d2a003500080000"
+    },
+    {
+      "name": "ipv4_fragment",
+      "kind": "rewrite",
+      "ipVersion": 4,
+      "ttlOffset": 8,
+      "before": 127,
+      "after": 64,
+      "checksumOffset": 10,
+      "inputHex": "45000014000220017f110000c0a8016408080808"
+    },
+    {
+      "name": "ipv6_tcp_syn",
+      "kind": "rewrite",
+      "ipVersion": 6,
+      "ttlOffset": 7,
+      "before": 127,
+      "after": 64,
+      "checksumOffset": null,
+      "inputHex": "600000000028067ffd00000000000000000000000000000120014860486000000000000000008888c00001bb11223344000000005002ffff00000000"
+    },
+    {
+      "name": "ipv4_already_normalized",
+      "kind": "nochange",
+      "ipVersion": 4,
+      "ttlOffset": 8,
+      "before": 64,
+      "after": 64,
+      "checksumOffset": 10,
+      "inputHex": "450000281234400040060000c0a801645db8d822c00001bb11223344000000005002ffff00000000"
+    },
+    {
+      "name": "garbage_short",
+      "kind": "drop",
+      "ipVersion": null,
+      "inputHex": "4500"
+    },
+    {
+      "name": "non_ip_version5",
+      "kind": "drop",
+      "ipVersion": null,
+      "inputHex": "560000140001000040110000c0a8016408080808"
+    }
+  ]
+}

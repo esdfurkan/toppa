@@ -1,0 +1,64 @@
+{
+  "protocol": "TLMP",
+  "version": 1,
+  "$comment": "Golden vectors for the TLMP address block codec (protocol/SPEC.md §4.4). Consumed by desktop/internal/mux/vectors_test.go and android :core:proto TlmpVectorsTest.kt.",
+  "cases": [
+    {
+      "name": "tcp_ipv4",
+      "kind": "valid",
+      "network": "tcp",
+      "atyp": "ipv4",
+      "host": "192.168.1.1",
+      "port": 8080,
+      "encodedHex": "0101c0a801011f90"
+    },
+    {
+      "name": "tcp_fqdn",
+      "kind": "valid",
+      "network": "tcp",
+      "atyp": "fqdn",
+      "host": "example.com",
+      "port": 443,
+      "encodedHex": "01030b6578616d706c652e636f6d01bb"
+    },
+    {
+      "name": "udp_ipv6",
+      "kind": "valid",
+      "network": "udp",
+      "atyp": "ipv6",
+      "host": "fd00::1",
+      "port": 53,
+      "encodedHex": "0204fd0000000000000000000000000000010035"
+    },
+    {
+      "name": "reject_truncated",
+      "kind": "error",
+      "encodedHex": "0101"
+    },
+    {
+      "name": "reject_bad_network",
+      "kind": "error",
+      "encodedHex": "0901c0a801011f90"
+    },
+    {
+      "name": "reject_bad_atyp",
+      "kind": "error",
+      "encodedHex": "0107c0a801011f90"
+    },
+    {
+      "name": "reject_empty_fqdn",
+      "kind": "error",
+      "encodedHex": "010300"
+    },
+    {
+      "name": "reject_fqdn_length_lie",
+      "kind": "error",
+      "encodedHex": "01030561626301bb"
+    },
+    {
+      "name": "reject_short_ipv4",
+      "kind": "error",
+      "encodedHex": "0101c0a801"
+    }
+  ]
+}

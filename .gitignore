@@ -1,0 +1,30 @@
+# Go
+desktop/**/*.exe
+desktop/**/*.test
+desktop/**/*.out
+*.sum.tmp
+
+# Gradle / Android
+.gradle/
+build/
+android/local.properties
+*.apk
+*.aab
+*.keystore
+
+# Tools & artifacts placed locally (never committed)
+.tools/
+dist/
+coverage/
+*.prof
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Local secrets / runtime state (keys must never be committed)
+.toppa/
+*.key.json
