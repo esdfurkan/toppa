@@ -39,10 +39,10 @@ object PipedStreams {
 /** Kotlin mirror of desktop/internal/mux/mux_test.go. */
 class MuxSessionTest {
 
-    private fun pair(tune: (MuxConfig) -> Unit = {}): Pair<MuxSession, MuxSession> {
+    private fun pair(tune: (MuxConfig) -> MuxConfig = { it }): Pair<MuxSession, MuxSession> {
         val (a, b) = PipedStreams.pair()
-        val clientCfg = MuxConfig(isInitiator = true, maxFramePayload = 4096, initialWindow = 64 * 1024).also(tune)
-        val serverCfg = MuxConfig(isInitiator = false, maxFramePayload = 4096, initialWindow = 64 * 1024).also(tune)
+        val clientCfg = tune(MuxConfig(isInitiator = true, maxFramePayload = 4096, initialWindow = 64 * 1024))
+        val serverCfg = tune(MuxConfig(isInitiator = false, maxFramePayload = 4096, initialWindow = 64 * 1024))
         return MuxSession(a, clientCfg) to MuxSession(b, serverCfg)
     }
 
@@ -132,8 +132,7 @@ class MuxSessionTest {
     @Test
     fun `flow control forces window round trips`() {
         val (client, server) = pair { cfg ->
-            cfg.initialWindow = 16 * 1024
-            cfg.maxFramePayload = 4096
+            cfg.copy(initialWindow = 16 * 1024, maxFramePayload = 4096)
         }
         echoServer(server)
 
