@@ -58,7 +58,7 @@ object ChaChaPoly {
     fun encrypt(key: ByteArray, nonce12: ByteArray, ad: ByteArray?, plaintext: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORM)
         cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "ChaCha20"), IvParameterSpec(nonce12))
-        if (!ad.isNullOrEmpty()) {
+        if (ad != null && ad.isNotEmpty()) {
             cipher.updateAAD(ad)
         }
         return cipher.doFinal(plaintext)
@@ -67,7 +67,7 @@ object ChaChaPoly {
     fun decrypt(key: ByteArray, nonce12: ByteArray, ad: ByteArray?, ciphertext: ByteArray): ByteArray {
         val cipher = Cipher.getInstance(TRANSFORM)
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "ChaCha20"), IvParameterSpec(nonce12))
-        if (!ad.isNullOrEmpty()) {
+        if (ad != null && ad.isNotEmpty()) {
             cipher.updateAAD(ad)
         }
         return cipher.doFinal(ciphertext)
@@ -95,8 +95,11 @@ object X25519 {
         generator.initialize(NamedParameterSpec.X25519, random)
         val keyPair = generator.generateKeyPair()
         val privateKey = keyPair.private as XECPrivateKey
-        val scalar = privateKey.scalar.orElseThrow {
-            IllegalStateException("x25519: provider returned a key without a scalar")
+        val scalarOptional = privateKey.scalar
+        val scalar: BigInteger = if (scalarOptional.isPresent) {
+            scalarOptional.get()
+        } else {
+            throw IllegalStateException("x25519: provider returned a key without a scalar")
         }
         return bigIntegerTo32LE(scalar)
     }
@@ -112,15 +115,19 @@ object X25519 {
         return agreement.generateSecret()
     }
 
-    private fun privateKey(raw: ByteArray) =
-        KeyFactory.getInstance("XDH").generatePrivate(
-            XECPrivateKeySpec(NamedParameterSpec.X25519, rawToBigInteger(raw))
+    private fun privateKey(raw: ByteArray): java.security.PrivateKey {
+        val u = rawToBigInteger(raw)
+        return KeyFactory.getInstance("XDH").generatePrivate(
+            XECPrivateKeySpec(NamedParameterSpec.X25519, u)
         )
+    }
 
-    private fun publicKey(raw: ByteArray) =
-        KeyFactory.getInstance("XDH").generatePublic(
-            XECPublicKeySpec(NamedParameterSpec.X25519, rawToBigInteger(raw))
+    private fun publicKey(raw: ByteArray): java.security.PublicKey {
+        val u = rawToBigInteger(raw)
+        return KeyFactory.getInstance("XDH").generatePublic(
+            XECPublicKeySpec(NamedParameterSpec.X25519, u)
         )
+    }
 
     private fun rawToBigInteger(raw: ByteArray): BigInteger {
         require(raw.size == 32) { "x25519: raw key must be 32 bytes, got ${raw.size}" }

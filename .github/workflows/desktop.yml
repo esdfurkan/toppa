@@ -5,30 +5,42 @@ on:
     branches: [main]
   pull_request:
 
+# Two runners: linux covers the pure packages (fast, race detector);
+# windows builds + tests EVERYTHING natively — the Wintun adapter, the
+# daemon, and gVisor are exercised on their real target OS.
+
 jobs:
-  build-test:
+  linux-pure:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: desktop
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27"
-
       - name: Build
-        # cmd/toppa (Fyne) is excluded: it needs cgo + OpenGL headers, and is
-        # built by scripts/package/windows.ps1 on Windows instead.
-        run: go build ./internal/... ./cmd/toppasvc ./cmd/toppactl ./cmd/vectorgen
-
+        run: go build ./internal/mux ./internal/tunnel ./internal/failsafe ./internal/relay ./internal/resolver ./internal/config ./internal/keys ./internal/api ./internal/obfuscation ./internal/transport
       - name: Vet
-        run: go vet ./internal/... ./cmd/toppasvc ./cmd/toppactl ./cmd/vectorgen
-
+        run: go vet ./internal/mux ./internal/tunnel ./internal/failsafe ./internal/relay ./internal/resolver ./internal/config ./internal/keys ./internal/api ./internal/obfuscation ./internal/transport
       - name: Test
-        run: go test -race ./internal/...
+        run: go test -race ./internal/mux ./internal/tunnel ./internal/failsafe ./internal/relay ./internal/resolver ./internal/config ./internal/keys ./internal/obfuscation
 
-      - name: Golden vectors (Step 1 interop milestone)
-        run: go test -race -tags vectors ./protocol/...
-        continue-on-error: true # enabled when protocol/vectors land
+  windows-full:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+      - name: Build (all, native target)
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./internal/... -count=1

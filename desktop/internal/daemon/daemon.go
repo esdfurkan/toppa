@@ -218,7 +218,7 @@ func (d *Daemon) connect(ctx context.Context) (time.Duration, error) {
 	// 5) Wintun + netstack + resolver + routes. Order matters: the adapter
 	// and routes exist before any app traffic can select them, and the
 	// journal entry lands BEFORE each mutation.
-	tun, err := adapter.NewWintun(adapter.Config{
+	tun, err := adapter.Open(adapter.Config{
 		Name: d.cfg.Netstack.AdapterName,
 		MTU:  d.cfg.Tunnel.MTU,
 	})
